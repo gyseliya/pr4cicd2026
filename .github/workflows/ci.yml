@@ -1,20 +1,22 @@
 name: API CI/CD
 
-# 1. Когда запускать (Triggers)
+# 1. Триггеры: когда запускать автоматизацию
 on:
   push:
-    branches: [ "main" ]
-    tags: [ "v*.*.*" ] # Запускать и при создании тегов вида v1.0.0
+    branches: [ "master" ]
+    tags: [ "v*.*.*" ]     # Сработает при создании тегов вроде v1.0.0, v2.1.3
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
-
-# 2. Что именно делать (Jobs)
 jobs:
+  # ==========================================
+  # ЭТАП СI: Тестирование и линтинг кода
+  # ==========================================
   build-and-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Запускаем 3 параллельных сервера с разными версиями Python
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
@@ -25,53 +27,53 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: 'pip' # Ускоряет повторные запуски, кэшируя библиотеки
 
-      - name: Устанавливаем зависимости
+      - name: Устанавливаем зависимости проекта
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Проверка кода линтером (Ruff)
+      - name: Проверка чистоты кода линтером (Ruff)
         run: ruff check .
 
       - name: Запуск автотестов (Pytest)
         run: pytest
-  
+
+  # ==========================================
+  # ЭТАП CD: Сборка и публикация в Docker Hub
+  # ==========================================
   build-and-push:
-    # Запускаем эту задачу ТОЛЬКО если build-and-test завершилась успешно
-    needs: build-and-test 
-    # Запускаем ТОЛЬКО если пуш содержит тег (а не просто коммит в main)
+    # Запускать этот этап только если этап тестирования прошел успешно
+    needs: build-and-test
+    # Публиковать только в том случае, если это пуш Git-тега релиза
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Скачиваем код
+      - name: Скачиваем код репозитория
         uses: actions/checkout@v4
 
-      # Авторизуемся в Docker Hub с помощью наших спрятанных секретов
       - name: Логин в Docker Hub
         uses: docker/login-action@v3
         with:
+          # Используем зашифрованные переменные из GitHub Secrets
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      # Вытаскиваем версию из Git-тега (например, 1.0.0), чтобы назвать так образ
-      - name: Получаем версию релиза (тег)
+      - name: Извлекаем версию из тега
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-      # Собираем и пушим Docker-образ
       - name: Сборка и отправка Docker-образа
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
+          # Публикуем сразу два тега: актуальный номер версии и ярлык latest
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/bmi-api:latest
             ${{ secrets.DOCKER_USERNAME }}/bmi-api:${{ env.VERSION }}
-
-
 
 
 
