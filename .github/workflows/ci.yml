@@ -74,9 +74,3 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/bmi-api:latest
             ${{ secrets.DOCKER_USERNAME }}/bmi-api:${{ env.VERSION }}
-
-
-
-
-
-

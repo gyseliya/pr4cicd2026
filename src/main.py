@@ -9,4 +9,3 @@ def calculate_bmi(weight: float, height: float):
     
     bmi = weight / (height ** 2)
     return {"weight": weight, "height": height, "bmi": round(bmi, 2)}
-    
