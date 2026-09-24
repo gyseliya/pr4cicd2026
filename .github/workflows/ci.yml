@@ -38,7 +38,7 @@ jobs:
       - name: Запуск автотестов (Pytest)
         run: pytest
   
-    build-and-push:
+  build-and-push:
     # Запускаем эту задачу ТОЛЬКО если build-and-test завершилась успешно
     needs: build-and-test 
     # Запускаем ТОЛЬКО если пуш содержит тег (а не просто коммит в main)
